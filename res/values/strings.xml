@@ -1,4 +1,6 @@
 <?xml version="1.0" encoding="utf-8"?>
 <resources>
   <string name="app_name">R.S. Logger</string>
+
+  <string name="firstMessage">Monitoring Radio Strengths (3G, Wi-Fi).  See the logcat.</string>
 </resources>
