@@ -1,0 +1,3 @@
+# Radio Strength Logger
+
+Output radio strength of 3G and Wi-Fi to logcat periodically.
