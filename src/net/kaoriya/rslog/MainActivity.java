@@ -15,6 +15,8 @@ import android.telephony.TelephonyManager;
 import android.net.wifi.WifiManager;
 import android.net.wifi.WifiInfo;
 
+import java.lang.reflect.Field;
+
 public class MainActivity extends Activity
 {
     public static final String TAG = "rslog";
@@ -87,7 +89,53 @@ public class MainActivity extends Activity
 
     private void log(SignalStrength signalStrength)
     {
-        Log.d(TAG, "Strength(3G)=" + signalStrength.toString());
+        if (signalStrength.isGsm()) {
+            if (isLte(signalStrength)) {
+                try
+                {
+                    final Field lteRsrp = signalStrength.getClass().getDeclaredField("mLteRsrp");
+                    lteRsrp.setAccessible(true);
+                    final Field lteRsrq = signalStrength.getClass().getDeclaredField("mLteRsrq");
+                    lteRsrq.setAccessible(true);
+
+                    Log.d(TAG, "Strength(lte):"
+                            + " rsrp=" + lteRsrp.get(signalStrength).toString()
+                            + ", rsrq=" + lteRsrq.get(signalStrength).toString());
+                }
+                catch (Exception e)
+                {
+                }
+            } else {
+                Log.d(TAG, "Strength(gsm):"
+                        + " rssi=" + String.valueOf(signalStrength.getGsmSignalStrength())
+                        + ", bit error rate=" + String.valueOf(signalStrength.getGsmBitErrorRate()));
+            }
+        } else {
+            Log.d(TAG, "Strength(cdma):"
+                    + " cdma rssi=" + String.valueOf(signalStrength.getCdmaDbm())
+                    + ", cdma ecio=" + String.valueOf(signalStrength.getCdmaEcio() / 10)
+                    + ", evdo rssi=" + String.valueOf(signalStrength.getEvdoDbm())
+                    + ", evdo ecio=" + String.valueOf(signalStrength.getEvdoEcio() / 10)
+                    + ", evdo snr=" + String.valueOf(signalStrength.getEvdoSnr()));
+        }
+    }
+
+    private boolean isLte(SignalStrength signalStrength)
+    {
+        try
+        {
+            final Field field = signalStrength.getClass().getDeclaredField("mLteSignalStrength");
+            field.setAccessible(true);
+            if (field.getInt(signalStrength) > -1) {
+                return true;
+            } else {
+                return false;
+            }
+        }
+        catch (Exception e)
+        {
+            return false;
+        }
     }
 
     private void logWifiStrength()
