@@ -1,5 +1,8 @@
 package net.kaoriya.rslog;
 
+import java.lang.reflect.Field;
+import java.util.Date;
+
 import android.app.Activity;
 import android.app.AlarmManager;
 import android.app.PendingIntent;
@@ -15,12 +18,11 @@ import android.telephony.TelephonyManager;
 import android.net.wifi.WifiManager;
 import android.net.wifi.WifiInfo;
 
-import java.lang.reflect.Field;
-
 public class MainActivity extends Activity
 {
     public static final String TAG = "rslog";
     public static final String ACTION_LOG_STRENGTH = "LogStrength";
+    public static final String FAIL_VALUE = "(N/A)";
 
     private PhoneStateListener phoneStateListener = null;
     private PendingIntent pendingIntent = null;
@@ -89,53 +91,79 @@ public class MainActivity extends Activity
 
     private void log(SignalStrength signalStrength)
     {
-        if (signalStrength.isGsm()) {
-            if (isLte(signalStrength)) {
-                try
-                {
-                    final Field lteRsrp = signalStrength.getClass().getDeclaredField("mLteRsrp");
-                    lteRsrp.setAccessible(true);
-                    final Field lteRsrq = signalStrength.getClass().getDeclaredField("mLteRsrq");
-                    lteRsrq.setAccessible(true);
+        Log.d(TAG, toString(signalStrength));
+    }
 
-                    Log.d(TAG, "Strength(lte):"
-                            + " rsrp=" + lteRsrp.get(signalStrength).toString()
-                            + ", rsrq=" + lteRsrq.get(signalStrength).toString());
-                }
-                catch (Exception e)
-                {
-                }
-            } else {
-                Log.d(TAG, "Strength(gsm):"
-                        + " rssi=" + String.valueOf(signalStrength.getGsmSignalStrength())
-                        + ", bit error rate=" + String.valueOf(signalStrength.getGsmBitErrorRate()));
-            }
-        } else {
-            Log.d(TAG, "Strength(cdma):"
-                    + " cdma rssi=" + String.valueOf(signalStrength.getCdmaDbm())
-                    + ", cdma ecio=" + String.valueOf(signalStrength.getCdmaEcio() / 10)
-                    + ", evdo rssi=" + String.valueOf(signalStrength.getEvdoDbm())
-                    + ", evdo ecio=" + String.valueOf(signalStrength.getEvdoEcio() / 10)
-                    + ", evdo snr=" + String.valueOf(signalStrength.getEvdoSnr()));
+    public static String toString(SignalStrength signal)
+    {
+        StringBuilder s = new StringBuilder();
+        s.append((new Date()).toLocaleString()).append(" - ");
+        s.append("Strength(").append(classify(signal).name()).append(") {\n");
+
+        // output LTE information.
+        if (isLte(signal)) {
+            s.append("  LTE strength=")
+                .append(getFieldValue(signal, "mLteSignalStrength"))
+                .append('\n');
+            s.append("  LTE RSRP=").append(getFieldValue(signal, "mLteRsrp"))
+                .append('\n');
+            s.append("  LTE RSRQ=").append(getFieldValue(signal, "mLteRsrq"))
+                .append('\n');
+        }
+
+        // output GSM information.
+        if (signal.isGsm()) {
+            s.append("  GSM RSSI=").append(signal.getGsmSignalStrength())
+                .append('\n');
+            s.append("  GSM bit error rate=")
+                .append(signal.getGsmBitErrorRate())
+                .append('\n');
+        }
+
+        // output CDMA information.
+        s.append("  CDMA RSSI=").append(signal.getCdmaDbm())
+            .append('\n');
+        s.append("  CDMA ECIO=").append(signal.getCdmaEcio() / 10)
+            .append('\n');
+
+        // output EVDO information.
+        s.append("  EVDO RSSI=").append(signal.getEvdoDbm())
+            .append('\n');
+        s.append("  EVDO ECIO=").append(signal.getEvdoEcio())
+            .append('\n');
+        s.append("  EVDO SNR=").append(signal.getEvdoSnr() / 10)
+            .append('\n');
+
+        s.append("}");
+        return s.toString();
+    }
+
+    public static String getFieldValue(Object target, String fieldName)
+    {
+        try {
+            Field field = target.getClass().getDeclaredField(fieldName);
+            field.setAccessible(true);
+            Object value = field.get(target);
+            return value != null ? value.toString() : FAIL_VALUE;
+        } catch (Exception e) {
+            return FAIL_VALUE;
         }
     }
 
-    private boolean isLte(SignalStrength signalStrength)
+    public static SignalType classify(SignalStrength signal) {
+        if (isLte(signal)) {
+            return SignalType.LTE;
+        } else if (signal.isGsm()) {
+            return SignalType.GSM;
+        } else {
+            return SignalType.CDMA;
+        }
+    }
+
+    public static boolean isLte(SignalStrength signalStrength)
     {
-        try
-        {
-            final Field field = signalStrength.getClass().getDeclaredField("mLteSignalStrength");
-            field.setAccessible(true);
-            if (field.getInt(signalStrength) > -1) {
-                return true;
-            } else {
-                return false;
-            }
-        }
-        catch (Exception e)
-        {
-            return false;
-        }
+        String value = getFieldValue(signalStrength, "mLteSignalStrength");
+        return value != FAIL_VALUE;
     }
 
     private void logWifiStrength()
