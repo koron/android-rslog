@@ -87,7 +87,18 @@ public class MainActivity extends Activity
 
     private void log(SignalStrength signalStrength)
     {
-        Log.d(TAG, "Strength(3G)=" + signalStrength.toString());
+        if (signalStrength.isGsm()) {
+            Log.d(TAG, "Strength(gsm):"
+                    + " rssi=" + String.valueOf(signalStrength.getGsmSignalStrength())
+                    + ", bit error rate=" + String.valueOf(signalStrength.getGsmBitErrorRate()));
+        } else {
+            Log.d(TAG, "Strength(cdma):"
+                    + " cdma rssi=" + String.valueOf(signalStrength.getCdmaDbm())
+                    + ", cdma ecio=" + String.valueOf(signalStrength.getCdmaEcio() / 10)
+                    + ", evdo rssi=" + String.valueOf(signalStrength.getEvdoDbm())
+                    + ", evdo ecio=" + String.valueOf(signalStrength.getEvdoEcio() / 10)
+                    + ", evdo snr=" + String.valueOf(signalStrength.getEvdoSnr()));
+        }
     }
 
     private void logWifiStrength()
